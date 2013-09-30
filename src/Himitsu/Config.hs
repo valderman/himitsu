@@ -6,7 +6,7 @@ import System.IO.Unsafe
 import Paths_himitsu
 
 appName :: String
-appName = "hasswords"
+appName = "himitsu"
 
 {-# NOINLINE appDataDir #-}
 appDataDir :: FilePath

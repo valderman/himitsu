@@ -7,7 +7,6 @@ import qualified Himitsu.PasswordStore as PS
 import AppState
 import Control.Exception
 import MenuUtils
-import System.Exit
 
 -- | Bring up the settings window. Basically only the password list.
 settingsWindow :: PS.PasswordStore PS.Locked -> IO ()
@@ -29,7 +28,7 @@ settingsWindow ps = do
       addItem "Change Master Password" m (changePassDialog ps')
       addItem "Lock database" m (widgetDestroy window)
       separatorMenuItemNew >>= menuShellAppend m
-      addItem "Exit" m exitSuccess
+      addItem "Exit" m mainQuit
       dbmenu <- menuItemNewWithLabel "Database"
       menuItemSetSubmenu dbmenu m
       menuShellAppend mb dbmenu

@@ -5,7 +5,6 @@ import Control.Concurrent
 import qualified Himitsu.PasswordStore as PS
 import Himitsu.Database (ServiceName)
 import Himitsu.Credentials
-import System.Exit
 import Data.String
 import Control.Applicative
 import Control.Monad
@@ -46,11 +45,11 @@ openMainMenu = do
       addItem "Open Database" m (openDatabaseDialog ps)
       addItem "Create New Database" m newDatabaseDialog
       separatorMenuItemNew >>= menuShellAppend m
-      addItem "Exit" m exitSuccess
+      addItem "Exit" m mainQuit
       menuPopup m Nothing
     _ -> do
       m <- menuNew
-      addItem "Exit" m exitSuccess
+      addItem "Exit" m mainQuit
       menuPopup m Nothing
 
 -- | Bring up a dialog to re-initialize the password database.
@@ -114,7 +113,8 @@ firstRunDialog :: IO ()
 firstRunDialog = do
     requestNewPassword msg Nothing >>= maybe (return ()) (updateState)
   where
-    updateState pass = PS.new pass passwordDBFile >>= setAppState . Unlocked
+    updateState pass =
+      PS.new pass passwordDBFile >>= PS.lock >>= setAppState . Locked
     msg = "Welcome to Himitsu, the Haskell password manager!\n"
          ++ "Please enter a (strong!) password for your password database "
          ++ "to get started."

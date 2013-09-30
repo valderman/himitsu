@@ -132,8 +132,13 @@ passwordManager window ps = do
     treeViewAppendColumn pwdlist services
     treeViewAppendColumn pwdlist names
     treeViewAppendColumn pwdlist strength
+    
+    scrollwindow <- scrolledWindowNew Nothing Nothing
+    scrolledWindowSetPolicy scrollwindow PolicyNever PolicyAutomatic
+    containerAdd scrollwindow pwdlist
+    
     vbox <- vBoxNew False 5
-    containerAdd vbox pwdlist
+    containerAdd vbox scrollwindow
     set vbox [boxChildPacking pwdlist := PackGrow]
 
     ctxmenu <- contextMenu ps lst pwdlist window

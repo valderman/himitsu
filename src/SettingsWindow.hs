@@ -37,7 +37,7 @@ settingsWindow ps = do
       containerAdd box mb
       containerAdd box manager
       set box [boxChildPacking mb := PackNatural]
-      widgetSetSizeRequest window 600 450
+      widgetSetSizeRequest window 450 300
       window `onDestroy` lock ps'
       widgetShowAll window
       return ()

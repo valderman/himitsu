@@ -110,14 +110,14 @@ passwordManager window ps = do
     cellLayoutSetAttributes services r lst $
       \(s, _) -> [cellText := show s]
     treeViewColumnSetTitle services "Service"
-    treeViewColumnSetMinWidth services 200
+    treeViewColumnSetMinWidth services 150
   
     names <- treeViewColumnNew
     cellLayoutPackStart names r False
     cellLayoutSetAttributes names r lst $
       \(_, c) -> [cellText := showName c]
     treeViewColumnSetTitle names "Username"
-    treeViewColumnSetMinWidth names 200
+    treeViewColumnSetMinWidth names 150
   
     strength <- treeViewColumnNew
     cellLayoutPackStart strength r False
@@ -126,7 +126,7 @@ passwordManager window ps = do
                                 then show (judge $ analyze c)
                                 else "No password!"]
     treeViewColumnSetTitle strength "Password Strength"
-    treeViewColumnSetMinWidth strength 100
+    treeViewColumnSetMinWidth strength 80
 
     pwdlist <- treeViewNewWithModel lst
     treeViewAppendColumn pwdlist services

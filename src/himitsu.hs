@@ -43,7 +43,7 @@ openMainMenu = do
     Locked ps -> do
       m <- menuNew
       addItem "Manage Passwords" m $ settingsWindow ps
-      addItem "Open Database" m openDatabaseDialog
+      addItem "Open Database" m (openDatabaseDialog ps)
       addItem "Create New Database" m newDatabaseDialog
       separatorMenuItemNew >>= menuShellAppend m
       addItem "Exit" m exitSuccess
@@ -81,13 +81,14 @@ newDatabaseDialog = do
     msg = "Please enter a password to protect your new database."
 
 -- | Bring up a dialog to open another database.
-openDatabaseDialog :: IO ()
-openDatabaseDialog = do
+openDatabaseDialog :: PS.PasswordStore a -> IO ()
+openDatabaseDialog ps = do
     dlg <- fileChooserDialogNew Nothing
                                 Nothing
                                 FileChooserActionOpen
                                 [("Cancel", ResponseCancel),
                                  ("Open Database", ResponseAccept)]
+    PS.getBackingFile ps >>= fileChooserSetFilename dlg
     res <- dialogRun dlg
     mf <- fileChooserGetFilename dlg
     widgetDestroy dlg

@@ -22,8 +22,8 @@ contextMenu ps model view window = do
   m <- menuNew
   addItem "Copy password" m (copyPassword model view)
   addItem "Add password" m (addPasswordDialog ps model)
-  addItem "Delete password" m (deletePassword ps model view window)
   addItem "Change password" m (updatePasswordDialog ps model view)
+  addItem "Delete password" m (deletePassword ps model view window)
   return m
 
 -- | Copy the selected password to the clipboard, with a one minut timeout

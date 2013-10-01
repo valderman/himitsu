@@ -12,7 +12,7 @@ import Data.Maybe (fromJust)
 
 main :: IO ()
 main = do
-  _ <- initGUI
+  _ <- unsafeInitGUIForThreadedRTS
   i <- statusIconNewFromFile systrayIconFile
   st <- getAppState
   case st of

@@ -31,7 +31,7 @@ contextMenu ps model view window = do
 copyPassword :: ListStore (ServiceName, Credentials) -> TreeView -> IO ()
 copyPassword model view = do
   withSelectedItem model view $ \_ (_, (Credentials _ p)) -> do
-    toClipboard (MSecs 60000) p
+    toClipboard (MSecs 30000) p
 
 -- | Update the password list.
 updatePasswords :: PS.PasswordStore PS.Unlocked

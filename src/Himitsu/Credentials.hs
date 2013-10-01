@@ -8,7 +8,7 @@ import Data.Text
 import Data.String
 import Graphics.UI.Gtk (
     clipboardGet, selectionClipboard, clipboardSetText,
-    clipboardRequestText, clipboardStore
+    clipboardRequestText, clipboardStore, postGUIAsync
   )
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Applicative
@@ -55,19 +55,27 @@ instance Clipboardable Password where
     c <- clipboardGet selectionClipboard
     clipboardSetText c (unpack pwd)
     clipboardStore c
+    putStrLn "copied text"
     -- If there's a timeout, clear the clipboard after it elapses, unless
     -- the clipboard contents changed in between.
     case timeout of
       MSecs ms -> do
+        putStrLn "setting timeout"
         _ <- forkIO $ do
+          putStrLn "timeout process started"
           threadDelay (ms*1000)
-          clipboardRequestText c $ \mpwd ->
-            case mpwd of
-              Just pwd' | pack pwd' == pwd -> do
-                clipboardSetText c ""
-                clipboardStore c
-              _ -> do
-                return ()
+          postGUIAsync $ do
+            putStrLn "timeout elapsed"
+            clipboardRequestText c $ \mpwd -> do
+              putStrLn "clipboard request triggers"
+              case mpwd of
+                Just pwd' | pack pwd' == pwd -> do
+                  clipboardSetText c ""
+                  clipboardStore c
+                  putStrLn "cleared clipboard"
+                _ -> do
+                  putStrLn "contents changed; not clearing"
+                  return ()
         return ()
       _ ->
         return ()

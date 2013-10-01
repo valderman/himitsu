@@ -204,6 +204,6 @@ updatePasswordDialog ps model view = do
         pass <- entryGetText passent
         PS.update ps (fromString svc) (const $ Credentials (fromString user) (fromString pass))
         updatePasswords ps model
-      ResponseReject -> do
+      _ -> do
         return ()
     widgetDestroy dlg

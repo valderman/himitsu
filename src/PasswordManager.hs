@@ -173,7 +173,7 @@ addPasswordDialog ps model = do
       pass <- entryGetText passent
       PS.add ps (fromString svc) (Credentials (fromString user) (fromString pass))
       updatePasswords ps model
-    ResponseReject -> do
+    _ -> do
       return ()
   widgetDestroy dlg
 

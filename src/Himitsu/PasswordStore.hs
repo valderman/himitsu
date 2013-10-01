@@ -1,7 +1,7 @@
 {-# LANGUAGE GADTs #-}
 module Himitsu.PasswordStore (
       PasswordStore, Locked, Unlocked,
-      lock, unlock, save, update, get, new, add, list, open, delete,
+      lock, unlock, save, update, get, new, add, list, open, delete, rename,
       changePass, getBackingFile, setBackingFile
   ) where
 import Himitsu.Credentials
@@ -77,6 +77,19 @@ update ps@(PS r) name f = do
       save ps
       return True
     _        ->
+      return False
+
+-- | Change the name of a service in a store.
+rename :: PasswordStore Unlocked -> ServiceName -> ServiceName -> IO Bool
+rename ps@(PS r) from to = do
+  (Unlocked file key db) <- readIORef r
+  case DB.get from db of
+    Just c -> do
+      let Just db' = DB.add to c (DB.remove from db)
+      writeIORef r $! Unlocked file key db'
+      save ps
+      return True
+    _ -> do
       return False
 
 -- | Get a set of credentials from the store.

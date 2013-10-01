@@ -198,9 +198,13 @@ updatePasswordDialog ps model view = do
         svc <- entryGetText serviceent
         user <- entryGetText userent
         pass <- entryGetText passent
-        _ <- PS.update ps (fromString svc)
+        _ <- PS.update ps s
                           (const $ Credentials (fromString user)
                                                (fromString pass))
+        let s' = fromString svc
+        when (s' /= s) $ do
+          _ <- PS.rename ps s s'
+          return ()
         updatePasswords ps model
       _ -> do
         return ()

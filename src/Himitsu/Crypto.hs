@@ -8,7 +8,6 @@ import Data.Word (Word8)
 import Data.Maybe (fromJust)
 import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8)
-import Data.Serialize (encode, decode)
 import Data.Int (Int64)
 import Data.Serialize
 

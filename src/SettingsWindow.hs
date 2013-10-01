@@ -1,11 +1,9 @@
 module SettingsWindow (settingsWindow) where
 import Graphics.UI.Gtk
-import PasswordGenerator
 import PasswordManager
 import PasswordDialogs
 import qualified Himitsu.PasswordStore as PS
 import AppState
-import Control.Exception
 import MenuUtils
 
 -- | Bring up the settings window. Basically only the password list.
@@ -38,7 +36,7 @@ settingsWindow ps = do
       containerAdd box manager
       set box [boxChildPacking mb := PackNatural]
       widgetSetSizeRequest window 465 300
-      window `onDestroy` lock ps'
+      _ <- window `onDestroy` lock ps'
       widgetShowAll window
       return ()
     _ ->
@@ -50,13 +48,13 @@ changePassDialog ps = do
     requestNewPassword msg Nothing >>= maybe (return ()) (updateState)
   where
     updateState pass = do
-      PS.changePass ps pass
+      _ <- PS.changePass ps pass
       dlg <- messageDialogNew Nothing
                               [DialogModal]
                               MessageInfo
                               ButtonsOk
                               changeOK
-      dialogRun dlg
+      _ <- dialogRun dlg
       widgetDestroy dlg
     msg = "Please enter a new password."
     changeOK = "Password changed! " ++

@@ -9,7 +9,7 @@ import Himitsu.Credentials
 passwordBox :: Dialog -> IO Entry
 passwordBox dlg = do
   ent <- entryNew
-  ent `on` entryActivate $ dialogResponse dlg ResponseAccept
+  _ <- ent `on` entryActivate $ dialogResponse dlg ResponseAccept
   entrySetVisibility ent False
   widgetShow ent
   return ent
@@ -24,8 +24,8 @@ requestPassword :: String -> (Password -> IO (Either String a)) -> IO (Maybe a)
 requestPassword msg callback = do
     dlg <- dialogNew
     containerSetBorderWidth dlg 15
-    dialogAddButton dlg "Cancel" ResponseReject
-    dialogAddButton dlg "Unlock" ResponseAccept
+    _ <- dialogAddButton dlg "Cancel" ResponseReject
+    _ <- dialogAddButton dlg "Unlock" ResponseAccept
     
     -- Message to user
     vbox <- dialogGetUpper dlg
@@ -45,13 +45,13 @@ requestPassword msg callback = do
       case res of
         ResponseAccept -> do
           pass <- entryGetText ent
-          res <- callback (fromString pass)
-          case res of
+          res' <- callback (fromString pass)
+          case res' of
             Right x -> do
               widgetDestroy dlg
               return (Just x)
-            Left msg -> do
-              labelSetText lbl msg
+            Left msg' -> do
+              labelSetText lbl msg'
               entrySetText ent ""
               widgetModifyFg lbl StateNormal (Color 65535 0 0)
               waitForOKPass dlg lbl ent
@@ -70,8 +70,8 @@ requestNewPassword :: String -> Maybe String -> IO (Maybe Password)
 requestNewPassword msg mwarning = do
     dlg <- dialogNew
     containerSetBorderWidth dlg 15
-    dialogAddButton dlg "Cancel" ResponseReject
-    dialogAddButton dlg "OK" ResponseAccept
+    _ <- dialogAddButton dlg "Cancel" ResponseReject
+    _ <- dialogAddButton dlg "OK" ResponseAccept
     
     -- Message to user
     vbox <- dialogGetUpper dlg
@@ -112,13 +112,13 @@ requestNewPassword msg mwarning = do
                 else do
                   let msgText = "Please check the box to indicate that you " ++
                                 "really know what you are doing!"
-                  dlg <- messageDialogNew Nothing
+                  dlg' <- messageDialogNew Nothing
                                           [DialogModal]
                                           MessageWarning
                                           ButtonsOk
                                           msgText
-                  dialogRun dlg
-                  widgetDestroy dlg
+                  _ <- dialogRun dlg'
+                  widgetDestroy dlg'
                   return False
             _ -> do
               return True

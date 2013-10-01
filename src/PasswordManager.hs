@@ -8,10 +8,8 @@ import Himitsu.PasswordUtils
 import Himitsu.Database
 import MenuUtils
 import Control.Monad.IO.Class
-import PasswordDialogs (passwordBox)
 import PasswordGenerator
 import Data.String
-import Control.Monad.Reader
 import Data.List
 
 -- | Build a context menu for display when right-clicking the password list.
@@ -22,7 +20,7 @@ contextMenu :: PS.PasswordStore PS.Unlocked
             -> IO Menu
 contextMenu ps model view window = do
   m <- menuNew
-  addItem "Copy password" m (copyPassword ps model view)
+  addItem "Copy password" m (copyPassword model view)
   addItem "Add password" m (addPasswordDialog ps model)
   addItem "Delete password" m (deletePassword ps model view window)
   addItem "Change password" m (updatePasswordDialog ps model view)
@@ -30,12 +28,9 @@ contextMenu ps model view window = do
 
 -- | Copy the selected password to the clipboard, with a one minut timeout
 --   until it is erased.
-copyPassword :: PS.PasswordStore PS.Unlocked
-             -> ListStore (ServiceName, Credentials)
-             -> TreeView
-             -> IO ()
-copyPassword ps model view = do
-  withSelectedItem model view $ \ix (s, (Credentials _ p)) -> do
+copyPassword :: ListStore (ServiceName, Credentials) -> TreeView -> IO ()
+copyPassword model view = do
+  withSelectedItem model view $ \_ (_, (Credentials _ p)) -> do
     toClipboard (MSecs 60000) p
 
 -- | Update the password list.
@@ -67,7 +62,7 @@ withSelectedItem model view f = do
                               MessageInfo
                               ButtonsOk
                               msgText
-      dialogRun dlg
+      _ <- dialogRun dlg
       widgetDestroy dlg
   where
     msgText = "You must select an item to do that."
@@ -79,7 +74,7 @@ deletePassword :: PS.PasswordStore PS.Unlocked
                -> Window
                -> IO ()
 deletePassword ps model view window = do
-  withSelectedItem model view $ \ix (s, c) -> do
+  withSelectedItem model view $ \ix (s, _) -> do
     let msgText = "Really delete password for " ++ show s ++ "? " ++
                   "Once deleted, your password will be gone forever and " ++
                   "can not be recovered."
@@ -129,9 +124,9 @@ passwordManager window ps = do
     treeViewColumnSetMinWidth strength 80
 
     pwdlist <- treeViewNewWithModel lst
-    treeViewAppendColumn pwdlist services
-    treeViewAppendColumn pwdlist names
-    treeViewAppendColumn pwdlist strength
+    _ <- treeViewAppendColumn pwdlist services
+    _ <- treeViewAppendColumn pwdlist names
+    _ <- treeViewAppendColumn pwdlist strength
     
     scrollwindow <- scrolledWindowNew Nothing Nothing
     scrolledWindowSetPolicy scrollwindow PolicyNever PolicyAutomatic
@@ -142,7 +137,7 @@ passwordManager window ps = do
     set vbox [boxChildPacking pwdlist := PackGrow]
 
     ctxmenu <- contextMenu ps lst pwdlist window
-    pwdlist `on` buttonPressEvent $ do
+    _ <- pwdlist `on` buttonPressEvent $ do
       btn <- eventButton
       when (btn == RightButton) $ do
         liftIO $ menuPopup ctxmenu Nothing
@@ -158,8 +153,8 @@ addPasswordDialog :: PS.PasswordStore PS.Unlocked
                   -> IO ()
 addPasswordDialog ps model = do
   dlg <- dialogNew
-  dialogAddButton dlg "Cancel" ResponseReject
-  dialogAddButton dlg "Add account" ResponseAccept
+  _ <- dialogAddButton dlg "Cancel" ResponseReject
+  _ <- dialogAddButton dlg "Add account" ResponseAccept
 
   vbox <- dialogGetUpper dlg
   (box, serviceent, userent, passent) <- newPasswordBox dlg
@@ -171,7 +166,8 @@ addPasswordDialog ps model = do
       svc <- entryGetText serviceent
       user <- entryGetText userent
       pass <- entryGetText passent
-      PS.add ps (fromString svc) (Credentials (fromString user) (fromString pass))
+      _ <- PS.add ps (fromString svc)
+                     (Credentials (fromString user) (fromString pass))
       updatePasswords ps model
     _ -> do
       return ()
@@ -184,10 +180,10 @@ updatePasswordDialog :: PS.PasswordStore PS.Unlocked
                      -> TreeView
                      -> IO ()
 updatePasswordDialog ps model view = do
-  withSelectedItem model view $ \ix (s, Credentials u p) -> do
+  withSelectedItem model view $ \_ (s, Credentials u p) -> do
     dlg <- dialogNew
-    dialogAddButton dlg "Cancel" ResponseReject
-    dialogAddButton dlg "Update password" ResponseAccept
+    _ <- dialogAddButton dlg "Cancel" ResponseReject
+    _ <- dialogAddButton dlg "Update password" ResponseAccept
 
     vbox <- dialogGetUpper dlg
     (box, serviceent, userent, passent) <- newPasswordBox dlg
@@ -202,7 +198,9 @@ updatePasswordDialog ps model view = do
         svc <- entryGetText serviceent
         user <- entryGetText userent
         pass <- entryGetText passent
-        PS.update ps (fromString svc) (const $ Credentials (fromString user) (fromString pass))
+        _ <- PS.update ps (fromString svc)
+                          (const $ Credentials (fromString user)
+                                               (fromString pass))
         updatePasswords ps model
       _ -> do
         return ()

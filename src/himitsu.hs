@@ -1,12 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 import Graphics.UI.Gtk hiding (toClipboard)
-import Control.Concurrent
 import qualified Himitsu.PasswordStore as PS
-import Himitsu.Database (ServiceName)
-import Himitsu.Credentials
-import Data.String
-import Control.Applicative
 import Control.Monad
 import AppState
 import Himitsu.Config
@@ -15,8 +10,9 @@ import SettingsWindow
 import MenuUtils
 import Data.Maybe (fromJust)
 
+main :: IO ()
 main = do
-  initGUI
+  _ <- initGUI
   i <- statusIconNewFromFile systrayIconFile
   st <- getAppState
   case st of
@@ -24,11 +20,11 @@ main = do
     _    -> return ()
 
   statusIconSetVisible i True
-  i `on` statusIconPopupMenu $ \_ _ -> do
+  _ <- i `on` statusIconPopupMenu $ \_ _ -> do
     i `seq` openMainMenu
-  i `on` statusIconActivate $ do
-    st <- getAppState
-    case st of
+  _ <- i `on` statusIconActivate $ do
+    st' <- getAppState
+    case st' of
       Locked ps -> settingsWindow ps
       _         -> return ()
   mainGUI
@@ -75,7 +71,7 @@ newDatabaseDialog = do
                               MessageInfo
                               ButtonsOk
                               "New database created successfully!"
-      dialogRun dlg
+      _ <- dialogRun dlg
       widgetDestroy dlg
     msg = "Please enter a password to protect your new database."
 
@@ -87,7 +83,7 @@ openDatabaseDialog ps = do
                                 FileChooserActionOpen
                                 [("Cancel", ResponseCancel),
                                  ("Open Database", ResponseAccept)]
-    PS.getBackingFile ps >>= fileChooserSetFilename dlg
+    _ <- PS.getBackingFile ps >>= fileChooserSetFilename dlg
     res <- dialogRun dlg
     mf <- fileChooserGetFilename dlg
     widgetDestroy dlg
@@ -95,16 +91,15 @@ openDatabaseDialog ps = do
       let Just f = mf
       open f
       setConf $ \c -> c {cfgDBFile = f}
-      dlg <- messageDialogNew Nothing
-                              [DialogModal]
-                              MessageInfo
-                              ButtonsOk
-                              (changeOK f)
-      dialogRun dlg
-      widgetDestroy dlg
+      dlg' <- messageDialogNew Nothing
+                               [DialogModal]
+                               MessageInfo
+                               ButtonsOk
+                               (changeOK f)
+      _ <- dialogRun dlg'
+      widgetDestroy dlg'
   where
     open f = PS.open f >>= setAppState . Locked . fromJust
-    msg = "Please enter a password to protect your new database."
     changeOK f = "Database " ++ f ++ " loaded successfully!"
 
 -- | Bring up a dialog to initialize the database if none were found.

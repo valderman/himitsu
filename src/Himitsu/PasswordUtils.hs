@@ -142,8 +142,8 @@ generate (PasswordSpec len lower upper num sym) g =
         if sym   then asciiSyms else []
       ]
     range = length cs
-    go 0 ps g =
-      (g, ps)
-    go n ps g =
-      case randomR (0, range-1) g of
-        (ix, g') -> go (n-1) ((cs !! ix) : ps) g'
+    go 0 ps gen =
+      (gen, ps)
+    go n ps gen =
+      case randomR (0, range-1) gen of
+        (ix, gen') -> go (n-1) ((cs !! ix) : ps) gen'

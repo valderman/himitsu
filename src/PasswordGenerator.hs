@@ -39,7 +39,7 @@ accountBox passframe dlg = do
   -- Service name
   servicelabel <- labelNew (Just "Name of service/website")
   serviceent <- entryNew
-  serviceent `on` entryActivate $ dialogResponse dlg ResponseAccept
+  _ <- serviceent `on` entryActivate $ dialogResponse dlg ResponseAccept
   servicelblalign <- alignmentNew 0 0 0 0
   containerAdd servicelblalign servicelabel
   containerAdd accountbox servicelblalign
@@ -48,7 +48,7 @@ accountBox passframe dlg = do
   -- Username for service
   userlabel <- labelNew (Just "Your username")
   userent <- entryNew
-  userent `on` entryActivate $ dialogResponse dlg ResponseAccept
+  _ <- userent `on` entryActivate $ dialogResponse dlg ResponseAccept
   userlblalign <- alignmentNew 0 0 0 0
   containerAdd userlblalign userlabel
   containerAdd accountbox userlblalign
@@ -107,16 +107,19 @@ generatorBox dlg = do
   passbox <- vBoxNew False 5
   containerSetBorderWidth passbox 5
   containerAdd passframe passbox
+
   -- Text box containing password.
   passent <- passwordBox dlg
   entrySetWidthChars passent 30
   entrySetVisibility passent False
   containerAdd passbox passent
+
   -- Show the password?
   visible <- checkButtonNewWithLabel "Show password"
   containerAdd passbox visible
-  visible `on` toggled $ do
+  _ <- visible `on` toggled $ do
     toggleButtonGetActive visible >>= entrySetVisibility passent
+
   -- Asessing password strength
   strbox <- hBoxNew False 5
   containerSetBorderWidth strbox 5
@@ -132,12 +135,12 @@ generatorBox dlg = do
   let fillPW = fillNewPassword rating passent numchars lower upper numbers special
       fillPR = entryGetText passent >>= fillPasswordRating rating
   mapM_ (\x -> x `on` buttonActivated $ fillPW) [lower,upper,numbers,special]
-  onValueSpinned numchars fillPW
+  _ <- onValueSpinned numchars fillPW
   widgetGrabFocus passent
-  passent `on` editableChanged $ fillPR
+  _ <- passent `on` editableChanged $ fillPR
 
   btn <- buttonNewWithLabel "Generate"
-  btn `on` buttonActivated $ do
+  _ <- btn `on` buttonActivated $ do
     fillNewPassword rating passent numchars lower upper numbers special
   containerAdd passbox btn
   

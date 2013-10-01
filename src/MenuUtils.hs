@@ -6,5 +6,5 @@ addItem :: String -> Menu -> IO () -> IO ()
 addItem label m callback = do
   i <- menuItemNewWithLabel label
   menuShellAppend m i
-  i `on` menuItemActivate $ callback
+  _ <- i `on` menuItemActivate $ callback
   widgetShow i

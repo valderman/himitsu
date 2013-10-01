@@ -40,6 +40,8 @@ unlock (PS r) pwd = do
             return (Just (PS r))
           _       -> do
             return Nothing
+      _ -> do
+        return Nothing
 
 -- | Lock the password store.
 lock :: PasswordStore Unlocked -> IO (PasswordStore Locked)

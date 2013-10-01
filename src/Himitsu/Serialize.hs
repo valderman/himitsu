@@ -10,9 +10,6 @@ module Himitsu.Serialize (
 import Data.Serialize
 import qualified Data.ByteString.Lazy as BSL
 import Himitsu.Crypto
-import Crypto.Random
-import Data.IORef
-import System.IO.Unsafe
 import Control.Applicative
 import Control.Monad
 import Data.Text (Text)

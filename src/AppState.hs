@@ -79,7 +79,7 @@ withFailure :: IO () -> IO ()
 withFailure m = catch m $ \err -> do
   let msg = show (err :: SomeException)
   dlg <- messageDialogNew Nothing [DialogModal] MessageError ButtonsOk msg
-  dialogRun dlg
+  _ <- dialogRun dlg
   widgetDestroy dlg
 
 -- | Ask the user for a password, then use that password to unlock the app

@@ -7,12 +7,10 @@ module Himitsu.Credentials (
 import Data.Text
 import Data.String
 import Graphics.UI.Gtk (
-    Clipboard, clipboardGet, selectionClipboard, clipboardSetText,
+    clipboardGet, selectionClipboard, clipboardSetText,
     clipboardRequestText, clipboardStore
   )
 import Control.Concurrent (forkIO, threadDelay)
-import Crypto.Scrypt
-import qualified Data.ByteString as BS
 import Control.Applicative
 import Himitsu.Crypto
 import Himitsu.Serialize
@@ -61,7 +59,7 @@ instance Clipboardable Password where
     -- the clipboard contents changed in between.
     case timeout of
       MSecs ms -> do
-        forkIO $ do
+        _ <- forkIO $ do
           threadDelay (ms*1000)
           clipboardRequestText c $ \mpwd ->
             case mpwd of

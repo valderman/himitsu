@@ -70,27 +70,32 @@ update :: PasswordStore Unlocked
        -> (Credentials -> Credentials)
        -> IO Bool
 update ps@(PS r) name f = do
-  (Unlocked file key db) <- readIORef r
-  case DB.update name f db of
-    Just db' -> do
-      writeIORef r $! Unlocked file key db'
-      save ps
-      return True
-    _        ->
-      return False
+    success <- atomicModifyIORef' r update'
+    when success $ save ps
+    return success
+  where
+    update' (Unlocked file k db) =
+      case DB.update name f db of
+        Just db' -> (Unlocked file k db', True)
+        _        -> (Unlocked file k db, False)
+    update' s =
+      (s, False)
 
 -- | Change the name of a service in a store.
 rename :: PasswordStore Unlocked -> ServiceName -> ServiceName -> IO Bool
 rename ps@(PS r) from to = do
-  (Unlocked file key db) <- readIORef r
-  case DB.get from db of
-    Just c -> do
-      let Just db' = DB.add to c (DB.remove from db)
-      writeIORef r $! Unlocked file key db'
-      save ps
-      return True
-    _ -> do
-      return False
+    success <- atomicModifyIORef' r rename'
+    when success $ save ps
+    return success
+  where
+    rename' (Unlocked f k db) =
+      case DB.get from db of
+        Just c | Just db' <- DB.add to c (DB.remove from db) ->
+          (Unlocked f k db', True)
+        _ ->
+          (Unlocked f k db, False)
+    rename' s =
+      (s, False)
 
 -- | Get a set of credentials from the store.
 get :: PasswordStore Unlocked -> ServiceName -> IO (Maybe Credentials)

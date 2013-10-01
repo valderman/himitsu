@@ -26,6 +26,7 @@ main = do
     st' <- getAppState
     case st' of
       Locked ps -> settingsWindow ps
+      NoDB      -> firstRunDialog
       _         -> return ()
   mainGUI
 

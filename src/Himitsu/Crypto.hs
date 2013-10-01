@@ -92,10 +92,10 @@ padKey sz bs =
   where
     len = fromIntegral $ BS.length bs
 
--- | Default key parameters: use 64MB of memory and take about 0.2 seconds
+-- | Default key parameters: use 128MB of memory and take about 0.3 seconds
 --   on a mobile Ivy Bridge Core i5.
 defaultKeyParams :: KeyParams
-defaultKeyParams = (16, 8, 1)
+defaultKeyParams = (17, 8, 1)
 
 -- | Encrypt-then-MAC a message, then prepend the parameters used to generate
 --   the key.

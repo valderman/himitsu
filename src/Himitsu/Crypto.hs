@@ -16,23 +16,23 @@ import Data.Serialize
 class Secret a where
   -- | Generate a key from a secret using the default Scrypt settings.
   toKey :: a -> Key
-  toKey = fromJust . deriveKey defaultKeyParams
-  -- | Generate a key from a secret using custom Scrypt settings.
-  deriveKey :: KeyParams -> a -> Maybe Key
+  toKey = fromJust . deriveKey defaultKeyParams globalSalt
+  -- | Generate a key from a secret using custom Scrypt settings and salt.
+  deriveKey :: KeyParams -> BS.ByteString -> a -> Maybe Key
 
 instance Secret Key where
   toKey = id
-  deriveKey = const Just
+  deriveKey _ _ = Just
 
 instance Secret Text where
-  deriveKey params pass = deriveKey params (encodeUtf8 pass)
+  deriveKey params salt pass = deriveKey params salt (encodeUtf8 pass)
 
 instance Secret BS.ByteString where
-  deriveKey (n, r, p) pass = do
+  deriveKey (n, r, p) saltBytes pass = do
       ps <- scryptParams (fromIntegral n) (fromIntegral r) (fromIntegral p)
-      return $! Key n r p (key ps)
+      return $! Key n r p saltBytes (key ps)
     where
-      salt = Salt globalSalt
+      salt = Salt saltBytes
       -- 256 bit key; pad to 32 bits
       key ps = fromJust
              . TF.toBlock
@@ -47,26 +47,14 @@ globalSalt = "\"$€][)EAR¢]®ß"
 -- | Describes a key with its derivation parameters.
 --   The memory use of the key derivation function is about 128*r*N^2,
 --   and run time can be tuned separately from memory use with the p parameter.
+--   The salt must not be longer than 255 bytes.
 data Key = Key {
-    kN   :: !Word8, -- ^ Scrypt N parameter
-    kR   :: !Word8, -- ^ Scrypt r parameter
-    kP   :: !Word8, -- ^ Scrypt p parameter
-    kKey :: !TF.Key256
+    kN    :: !Word8, -- ^ Scrypt N parameter
+    kR    :: !Word8, -- ^ Scrypt r parameter
+    kP    :: !Word8, -- ^ Scrypt p parameter
+    kSalt :: !BS.ByteString,
+    kKey  :: !TF.Key256
   }
-
--- | An encrypted message.
-data Message = Message (Word8, Word8, Word8) BSL.ByteString
-
-instance Serialize Message where
-  put (Message (n, r, p) cryptotext) = do
-    putWord8 n >> putWord8 r >> putWord8 p
-    putWord64le (fromIntegral $ BSL.length cryptotext)
-    putLazyByteString cryptotext
-  get = do
-    n <- getWord8 ; r <- getWord8 ; p <- getWord8
-    len <- getWord64le
-    cryptotext <- getLazyByteString (fromIntegral len)
-    return $! Message (n, r, p) cryptotext
 
 -- | Scrypt N, r and p parameters.
 type KeyParams = (Word8, Word8, Word8)
@@ -78,7 +66,15 @@ msgKeyParams msg =
       Just _ -> Just (n, r, p)
       _      -> Nothing
   where
-    [n, r, p] = BSL.unpack $ BSL.take 3 msg
+    len = fromIntegral $ BSL.head msg
+    [n, r, p] = BSL.unpack $ BSL.take 3 $ BSL.drop (len+1) msg
+
+-- | Extract the key parameters from a message.
+msgSalt :: BSL.ByteString -> BS.ByteString
+msgSalt msg =
+    BSL.toStrict $ BSL.take (fromIntegral len) $ BSL.tail msg
+  where
+    len = BSL.head msg
 
 -- | Pad a ByteString to n bytes. If the given ByteString is empty,
 --   the resulting key will be composed by n null bytes. If it is non-empty
@@ -104,12 +100,18 @@ defaultKeyParams = (16, 8, 1)
 -- | Encrypt-then-MAC a message, then prepend the parameters used to generate
 --   the key.
 encrypt :: Key -> BSL.ByteString -> BSL.ByteString
-encrypt (Key n r p k) plaintext =
-    BSL.append (BSL.pack [n,r,p]) (TF.encryptBytes k plaintext)
+encrypt (Key n r p s k) plaintext =
+    BSL.concat [salt, BSL.pack [n,r,p], TF.encryptBytes k plaintext]
+  where
+    salt = runPutLazy $ do
+      putWord8 $ fromIntegral $ BS.length s
+      putByteString s
 
 -- | Verify and decrypt a message.
 decrypt :: Key -> BSL.ByteString -> Maybe BSL.ByteString
-decrypt (Key _ _ _ k) msg =
-  case TF.decryptBytes k (BSL.drop 3 msg) of
-    Right x -> Just x
-    _       -> Nothing
+decrypt (Key _ _ _ _ k) msg =
+    case TF.decryptBytes k (BSL.drop (saltlen+4) msg) of
+      Right x -> Just x
+      _       -> Nothing
+  where
+    saltlen = fromIntegral $ BSL.head msg

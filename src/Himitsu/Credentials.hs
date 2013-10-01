@@ -75,7 +75,7 @@ instance Clipboardable Password where
         return ()
 
 instance Secret Password where
-  deriveKey params (Password pwd) = deriveKey params pwd
+  deriveKey params salt (Password pwd) = deriveKey params salt pwd
 
 instance SecurelyStorable Password where
   put' (Password x) = put' x

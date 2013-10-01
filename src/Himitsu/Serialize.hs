@@ -5,8 +5,7 @@
 --   This way, sensitive data can be serialized, but only in encrypted form.
 module Himitsu.Serialize (
     SecurelyStorable (..), SecGet, SecPut, SecPutM,
-    encode', decode', liftPut, liftGet, encodeTo, decodeFrom,
-    Message, msgKeyParams
+    encode', decode', liftPut, liftGet
   ) where
 import Data.Serialize
 import qualified Data.ByteString.Lazy as BSL
@@ -62,21 +61,20 @@ runGet' (SecGet g) bs =
     _       -> Nothing
 
 -- | Decrypt and decode a message encrypted by @encode'@.
-decode' :: (SecurelyStorable a, Secret s) => s -> BSL.ByteString -> Maybe a
+decode' :: (SecurelyStorable a, Secret s)
+        => s
+        -> BSL.ByteString
+        -> Maybe (a, Key)
 decode' s m = do
+  let salt = msgSalt m
   ps <- msgKeyParams m
-  k <- deriveKey ps s
+  k <- deriveKey ps salt s
   bs <- decrypt k m
-  runGet' get' bs
+  bs' <- runGet' get' bs
+  return (bs', k)
 
 {-# NOINLINE encode' #-}
 -- | Encode a securely storable value with a nonce from a high quality PRNG
 --   seeded by the system's entropy pool.
 encode' :: (SecurelyStorable a, Secret s) => s -> a -> BSL.ByteString
 encode' s x = encrypt (toKey s) (runPut' $ put' x)
-
-encodeTo :: (SecurelyStorable a, Secret s) => FilePath -> s -> a -> IO ()
-encodeTo file s x = error "skriv skit till tempfil, kopiera sen över"
-
-decodeFrom :: (SecurelyStorable a, Secret s) => FilePath -> s -> IO (Maybe a)
-decodeFrom file s = decode' s <$> BSL.readFile file

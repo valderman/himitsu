@@ -32,16 +32,14 @@ unlock (PS r) pwd = do
     ps <- readIORef r
     case ps of
       Locked file -> do
-        mdb <- decode' key <$> BSL.readFile file
-        case mdb of
-          Just db -> do
+        mdbkey <- decode' pwd <$> BSL.readFile file
+        case mdbkey of
+          Just (db, key) -> do
             let store = Unlocked file key db
             writeIORef r store
             return (Just (PS r))
           _       -> do
             return Nothing
-  where
-    key = toKey pwd
 
 -- | Lock the password store.
 lock :: PasswordStore Unlocked -> IO (PasswordStore Locked)

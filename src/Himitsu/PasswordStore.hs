@@ -45,11 +45,8 @@ unlock (PS r) pwd = do
 
 -- | Lock the password store.
 lock :: PasswordStore Unlocked -> IO (PasswordStore Locked)
-lock store@(PS r) = do
-  (Unlocked file _ _) <- readIORef r
-  save store
-  writeIORef r $! Locked file
-  return (PS r)
+lock (PS r) = do
+  atomicModifyIORef' r $ \(Unlocked file _ _) -> (Locked file, PS r)
 
 -- | Save an unlocked password store. The data is first written to a temporary
 --   file, which then atomically replaces the old database. This ensures that

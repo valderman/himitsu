@@ -32,15 +32,16 @@ unlock (PS r) pwd = do
     ps <- takeMVar r
     case ps of
       Locked file -> do
-        mdbkey <- decode' pwd <$> BSL.readFile file
-        case mdbkey of
-          Just (db, key) -> do
-            let store = Unlocked file key db
-            putMVar r store
-            return (Just (PS r))
-          _       -> do
-            putMVar r ps
-            return Nothing
+        withBinaryFile file ReadMode $ \h -> do
+          mdbkey <- decode' pwd <$> BSL.hGetContents h
+          case mdbkey of
+            Just (db, key) -> do
+              let store = Unlocked file key db
+              putMVar r store
+              return (Just (PS r))
+            _       -> do
+              putMVar r ps
+              return Nothing
       _ -> do
         putMVar r ps
         return Nothing

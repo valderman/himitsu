@@ -17,7 +17,7 @@ appDataDir = unsafePerformIO $ do
 
 -- | Default database file name. The user may change this in the config.
 passwordDBFile :: FilePath
-passwordDBFile = appDataDir </> "passwords.db"
+passwordDBFile = appDataDir </> "passwords.json"
 
 -- | Path to config file. The user may not change this.
 confFile :: FilePath

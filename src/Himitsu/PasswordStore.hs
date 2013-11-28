@@ -5,26 +5,37 @@ module Himitsu.PasswordStore (
       changePass, getBackingFile, setBackingFile
   ) where
 import Himitsu.Credentials
-import qualified Himitsu.Database as DB
-import Himitsu.Database (ServiceName)
-import Himitsu.Serialize
-import Himitsu.Crypto
+import Himitsu.Crypto hiding (Secret (..))
+import Himitsu.PasswordFile
 import Control.Applicative
 import Control.Monad
 import System.Directory
 import System.FilePath
 import qualified Data.ByteString.Lazy as BSL
 import Control.Concurrent.MVar
+import qualified Data.Aeson as Aeson
 import System.IO
-
-data Locked
-data Unlocked
 
 newtype PasswordStore a = PS (MVar Store)
 
 data Store where
   Locked   :: !FilePath -> Store
-  Unlocked :: !FilePath -> Key -> !DB.Database -> Store
+  Unlocked :: !FilePath -> !Password -> !(PasswordFile Unlocked) -> Store
+
+deleteAt :: Int -> [a] -> [a]
+deleteAt 0 (_:xs) = xs
+deleteAt n (x:xs) = x : deleteAt (n-1) xs
+deleteAt _ _      = []
+
+updateAt :: Int -> (a -> a) -> [a] -> [a]
+updateAt 0 f (x:xs) = f x : xs
+updateAt n f (x:xs) = x : updateAt (n-1) f xs
+updateAt _ _ _      = []
+
+getAt :: Int -> [a] -> Maybe a
+getAt 0 (x:_)  = Just x
+getAt n (_:xs) = getAt (n-1) xs
+getAt _ _      = Nothing
 
 -- | Unlock the password store.
 unlock :: PasswordStore Locked -> Password -> IO (Maybe (PasswordStore Unlocked))
@@ -32,16 +43,15 @@ unlock (PS r) pwd = do
     ps <- takeMVar r
     case ps of
       Locked file -> do
-        withBinaryFile file ReadMode $ \h -> do
-          mdbkey <- decode' pwd <$> BSL.hGetContents h
-          case mdbkey of
-            Just (db, key) -> do
-              let store = Unlocked file key db
-              putMVar r store
-              return (Just (PS r))
-            _       -> do
-              putMVar r ps
-              return Nothing
+        mpf <- Aeson.decode <$> BSL.readFile file
+        case mpf >>= flip decryptPF pwd of
+          Just pf -> do
+            let store = Unlocked file pwd pf
+            putMVar r store
+            return (Just (PS r))
+          _       -> do
+            putMVar r ps
+            return Nothing
       _ -> do
         putMVar r ps
         return Nothing
@@ -57,56 +67,61 @@ lock (PS r) = do
 --   mess up a user's database.
 save :: PasswordStore Unlocked -> IO ()
 save (PS r) = do
-  (Unlocked file key db) <- readMVar r
+  (Unlocked file pwd db) <- takeMVar r
   let (dir, tmp) = splitFileName file
+      db' = db {pfRevision = pfRevision db + 1}
   (tmpfile, h) <- openBinaryTempFile dir tmp
-  BSL.hPut h $ encode' key db
+  pf <- encryptPF db' pwd
+  BSL.hPut h $ Aeson.encode pf
   hClose h
   renameFile tmpfile file
+  putMVar r (Unlocked file pwd db')
 
 -- | Update a set of credentials.
-update :: PasswordStore Unlocked
-       -> ServiceName
-       -> (Credentials -> Credentials)
-       -> IO Bool
-update ps@(PS r) name f = do
+update :: PasswordStore Unlocked -> Int -> Credentials -> IO Bool
+update ps@(PS r) ix newcred = do
     success <- modifyMVar r update'
     when success $ save ps
     return success
   where
-    update' (Unlocked file k db) =
-      case DB.update name f db of
-        Just db' -> return (Unlocked file k db', True)
-        _        -> return (Unlocked file k db, False)
+    update' (Unlocked f k db) = do
+      case getAt ix . fromUnlocked $ pfSecret db of
+        Just _ -> do
+          let upd = updateAt ix $ \(name, _) -> (name, newcred)
+          return (Unlocked f k $ fmap upd db, True)
+        _ ->
+          return (Unlocked f k db, False)
     update' s =
       return (s, False)
 
 -- | Change the name of a service in a store.
-rename :: PasswordStore Unlocked -> ServiceName -> ServiceName -> IO Bool
-rename ps@(PS r) from to = do
+rename :: PasswordStore Unlocked -> Int -> ServiceName -> IO Bool
+rename ps@(PS r) ix newname = do
     success <- modifyMVar r rename'
     when success $ save ps
     return success
   where
-    rename' (Unlocked f k db) =
-      case DB.get from db of
-        Just c | Just db' <- DB.add to c (DB.remove from db) ->
-          return (Unlocked f k db', True)
+    rename' (Unlocked f k db) = do
+      case getAt ix . fromUnlocked $ pfSecret db of
+        Just _ -> do
+          let upd = updateAt ix $ \(_, cred) -> (newname, cred)
+          return (Unlocked f k $ fmap upd db, True)
         _ ->
           return (Unlocked f k db, False)
     rename' s =
       return (s, False)
 
 -- | Get a set of credentials from the store.
-get :: PasswordStore Unlocked -> ServiceName -> IO (Maybe Credentials)
-get (PS r) name = do
+get :: PasswordStore Unlocked -> Int -> IO (Maybe Credentials)
+get (PS r) ix = do
   (Unlocked _ _ db) <- readMVar r
-  return $! DB.get name db
+  return . fmap snd $ getAt ix (fromUnlocked (pfSecret db))
 
 -- | Create a new, unlocked password store.
 new :: Password -> FilePath -> IO (PasswordStore Unlocked)
 new pwd fp = do
-  ps <- PS `fmap` newMVar (Unlocked fp (toKey pwd) DB.new)
+  pf <- newPF []
+  ps <- PS `fmap` newMVar (Unlocked fp pwd pf)
   save ps
   return ps
 
@@ -115,36 +130,29 @@ new pwd fp = do
 changePass :: PasswordStore Unlocked -> Password -> IO (PasswordStore Unlocked)
 changePass ps@(PS r) pwd = do
   modifyMVar_ r $ \(Unlocked fp _ db) ->
-    return (Unlocked fp (toKey pwd) db)
+    return (Unlocked fp pwd db)
   save ps
   return ps
 
 -- | Add a password.
-add :: PasswordStore Unlocked
-    -> ServiceName
-    -> Credentials
-    -> IO Bool
+add :: PasswordStore Unlocked -> ServiceName -> Credentials -> IO ()
 add ps@(PS r) name cred = do
-  success <- modifyMVar r $ \(Unlocked file key db) ->
-    case DB.add name cred db of
-      Just db' -> return (Unlocked file key db', True)
-      _        -> return (undefined, False)
-  when success $ save ps
-  return success
-
--- | Remove a password.
-delete :: PasswordStore Unlocked -> ServiceName -> IO ()
-delete ps@(PS r) name = do
-  modifyMVar_ r $ \(Unlocked file key db) ->
-    return (Unlocked file key $ DB.remove name db)
+  modifyMVar r $ \(Unlocked file key db) ->
+    return (Unlocked file key $ fmap ((name, cred) :) db, ())
   save ps
 
--- | Return an unsorted list of all services the database contains passwords
---   for.
-list :: PasswordStore Unlocked -> IO [ServiceName]
+-- | Remove a password.
+delete :: PasswordStore Unlocked -> Int -> IO ()
+delete ps@(PS r) ix = do
+  modifyMVar_ r $ \(Unlocked file key db) ->
+    return (Unlocked file key $ fmap (deleteAt ix) db)
+  save ps
+
+-- | Return an unsorted list of all credentials currently in the store.
+list :: PasswordStore Unlocked -> IO [(ServiceName, Credentials)]
 list (PS r) = do
   (Unlocked _ _ db) <- readMVar r
-  return $ DB.list db
+  return . fromUnlocked $ pfSecret db
 
 -- | Create a new locked password store from a file. This operation only checks
 --   that the file exists; it may succeed even if the password store is not

@@ -5,7 +5,7 @@ import Graphics.UI.Gtk hiding (toClipboard)
 import qualified Himitsu.PasswordStore as PS
 import Himitsu.Credentials
 import Himitsu.PasswordUtils
-import Himitsu.Database
+import Himitsu.PasswordFile (ServiceName)
 import MenuUtils
 import Control.Monad.IO.Class
 import PasswordGenerator
@@ -39,10 +39,7 @@ updatePasswords :: PS.PasswordStore PS.Unlocked
                 -> ListStore (ServiceName, Credentials)
                 -> IO ()
 updatePasswords ps model = do
-  svcnames <- PS.list ps 
-  pwds <- forM svcnames $ \s -> do
-    Just c <- PS.get ps s
-    return (s, c)
+  pwds <- PS.list ps
   listStoreClear model
   forM_ (sort pwds) (listStoreAppend model)
 
@@ -86,7 +83,7 @@ deletePassword ps model view window = do
                             msgText
     res <- dialogRun dlg
     when (res == ResponseYes) $ do
-      PS.delete ps s
+      PS.delete ps ix
       listStoreRemove model ix
     widgetDestroy dlg
 
@@ -94,10 +91,7 @@ deletePassword ps model view window = do
 --   store.
 passwordManager :: Window -> PS.PasswordStore PS.Unlocked -> IO (VBox, IO ())
 passwordManager window ps = do
-    svcnames <- PS.list ps 
-    pwds <- forM svcnames $ \s -> do
-      Just c <- PS.get ps s
-      return (s, c)
+    pwds <- PS.list ps 
     lst <- listStoreNew (sort pwds)
     r <- cellRendererTextNew
     
@@ -181,7 +175,7 @@ updatePasswordDialog :: PS.PasswordStore PS.Unlocked
                      -> TreeView
                      -> IO ()
 updatePasswordDialog ps model view = do
-  withSelectedItem model view $ \_ (s, Credentials u p) -> do
+  withSelectedItem model view $ \ix (s, Credentials u p) -> do
     dlg <- dialogNew
     _ <- dialogAddButton dlg "Cancel" ResponseReject
     _ <- dialogAddButton dlg "Update password" ResponseAccept
@@ -199,12 +193,10 @@ updatePasswordDialog ps model view = do
         svc <- entryGetText serviceent
         user <- entryGetText userent
         pass <- entryGetText passent
-        _ <- PS.update ps s
-                          (const $ Credentials (fromString user)
-                                               (fromString pass))
+        _ <- PS.update ps ix $ Credentials (fromString user) (fromString pass)
         let s' = fromString svc
         when (s' /= s) $ do
-          _ <- PS.rename ps s s'
+          _ <- PS.rename ps ix s'
           return ()
         updatePasswords ps model
       _ -> do

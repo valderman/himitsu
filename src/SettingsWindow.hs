@@ -59,6 +59,3 @@ changePassDialog ps = do
     msg = "Please enter a new password."
     changeOK = "Password changed! " ++
                "Don't forget it, or your database will be lost."
-
-
--- TODO: lägg till meny med add account, change password, molnsaker, etc.

@@ -13,7 +13,6 @@ import Graphics.UI.Gtk (
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Applicative
 import Himitsu.Crypto
-import Himitsu.Serialize
 import Himitsu.PasswordUtils
 
 newtype Username = Username Text deriving (Eq, Ord, IsString)
@@ -73,20 +72,8 @@ instance Clipboardable Password where
       _ ->
         return ()
 
-instance Secret Password where
+instance KeyLike Password where
   deriveKey params salt (Password pwd) = deriveKey params salt pwd
-
-instance SecurelyStorable Password where
-  put' (Password x) = put' x
-  get' = fmap Password get'
-
-instance SecurelyStorable Username where
-  put' (Username x) = put' x
-  get' = fmap Username get'
-
-instance SecurelyStorable Credentials where
-  put' (Credentials user pass) = put' user >> put' pass
-  get' = Credentials <$> get' <*> get'
 
 -- | Do the given credentials have a non-empty password component?
 hasPassword :: Credentials -> Bool

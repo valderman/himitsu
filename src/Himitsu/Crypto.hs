@@ -2,18 +2,13 @@
 module Himitsu.Crypto where
 import Crypto.Scrypt
 import qualified Crypto.Threefish as TF
-import qualified Crypto.Threefish.Skein.StreamCipher as SC
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
-import qualified Data.ByteString.Base64 as B64
-import qualified Data.Aeson as Aeson
 import Data.Word (Word8)
 import Data.Maybe (fromJust)
 import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Int (Int64)
-import Crypto.Threefish.Authenticated (generateNonce)
-import System.IO.Unsafe
 
 -- | Any type that may be used to generate a key.
 class KeyLike a where
@@ -103,6 +98,7 @@ data Secret e a where
 instance Eq a => Eq (Secret e a) where
   (Locked a)   == (Locked b)   = a == b
   (Unlocked a) == (Unlocked b) = a == b
+  _            == _            = error "This can't happen due to type safety."
 
 instance Functor (Secret Unlocked) where
   fmap f (Unlocked x) = Unlocked (f x)

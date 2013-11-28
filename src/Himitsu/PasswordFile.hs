@@ -1,11 +1,11 @@
 {-# LANGUAGE GADTs, FlexibleInstances, OverloadedStrings #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 -- | A file representing a complete, encrypted password database with
 --   additional metadata.
 module Himitsu.PasswordFile (
     ProtectedFile (..), PasswordFile, ServiceName, Secret, Accounts,
     encryptPF, decryptPF, newPF
   ) where
-import Data.Word
 import Control.Monad
 import Control.Applicative
 import qualified Data.ByteString.Lazy.Char8 as BSL
@@ -183,7 +183,6 @@ decryptPF pf pwd = do
       pfNonce = pfNonce pf
     }
   where
-    k = deriveKey (pfKeyParams pf) (pfSalt pf) pwd
     rev = BSL.pack $ show $ pfRevision pf
     mac' k = skeinMAC k $ rev `BSL.append` (fromLocked $ pfSecret pf)
     checkMac k

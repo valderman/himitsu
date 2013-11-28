@@ -11,7 +11,6 @@ import Graphics.UI.Gtk (
     clipboardRequestText, clipboardStore, postGUIAsync
   )
 import Control.Concurrent (forkIO, threadDelay)
-import Control.Applicative
 import Himitsu.Crypto
 import Himitsu.PasswordUtils
 

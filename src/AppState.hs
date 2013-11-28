@@ -61,7 +61,7 @@ setConf :: (AppConf -> AppConf) -> IO ()
 setConf f = do
   atomicModifyIORef' appConf (\cfg -> (f cfg, ()))
   cfg <- readIORef appConf
-  (tmpfile, h) <- openBinaryTempFile appDataDir "passwords.db"
+  (tmpfile, h) <- openBinaryTempFile appDataDir "config"
   hPutStrLn h $ show cfg
   hClose h
   renameFile tmpfile confFile

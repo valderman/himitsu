@@ -1,4 +1,4 @@
--- | Application configuration for Hasswords.
+-- | Application configuration for Himitsu.
 module Himitsu.Config where
 import System.Directory
 import System.FilePath

@@ -11,6 +11,7 @@ import Control.Monad.IO.Class
 import PasswordGenerator
 import Data.String
 import Data.List
+import AppState
 
 -- | Build a context menu for display when right-clicking the password list.
 contextMenu :: PS.PasswordStore PS.Unlocked
@@ -32,7 +33,8 @@ contextMenu ps model view window = do
 copyPassword :: ListStore (ServiceName, Credentials) -> TreeView -> IO ()
 copyPassword model view = do
   withSelectedItem model view $ \_ (_, (Credentials _ p)) -> do
-    toClipboard (MSecs 30000) p
+    timeout <- getConf cfgClipboardTimeout
+    toClipboard timeout p
 
 -- | Update the password list.
 updatePasswords :: PS.PasswordStore PS.Unlocked

@@ -28,7 +28,7 @@ executable himitsu
     gtk >=0.12 && <0.13,
     data-default >=0.5,
     directory >=1.2,
-    threefish >=0.2.4,
+    threefish >=0.2.5,
     transformers >=0.3,
     mtl >=2.1,
     random >=1.0,

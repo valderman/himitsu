@@ -22,6 +22,7 @@ import Crypto.Threefish
 import Crypto.Scrypt
 import Himitsu.Credentials
 import Himitsu.Crypto
+import Himitsu.SortedList
 import qualified Data.Vector as V (toList, fromList)
 import Data.String
 import Data.IORef
@@ -83,8 +84,6 @@ instance ToJSON KeyParams where
 instance ToJSON Key256 where
   toJSON = toJSON . show
 
-type Accounts = [(ServiceName, Credentials)]
-
 instance FromJSON [(ServiceName, Credentials)] where
   parseJSON (Array arr) = forM (V.toList arr) $ \x -> do
     case x of
@@ -100,6 +99,12 @@ instance FromJSON [(ServiceName, Credentials)] where
 instance ToJSON [(ServiceName, Credentials)] where
   toJSON = Array . V.fromList . map f
     where f (sn, c) = object ["service" .= sn, "credentials" .= c]
+
+instance ToJSON Accounts where
+  toJSON = toJSON . toList
+
+instance FromJSON Accounts where
+  parseJSON x = fromList <$> parseJSON x
 
 instance FromJSON Credentials where
   parseJSON (Object o) =
@@ -124,6 +129,7 @@ data ProtectedFile a b = ProtectedFile {
     pfKeyParams  :: !KeyParams    -- ^ Key derivation parameters.
   } deriving (Eq)
 
+type Accounts = SortedList (ServiceName, Credentials)
 type PasswordFile a = ProtectedFile a Accounts
 
 instance ToJSON Salt where

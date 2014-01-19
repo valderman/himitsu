@@ -10,7 +10,6 @@ import MenuUtils
 import Control.Monad.IO.Class
 import PasswordGenerator
 import Data.String
-import Data.List
 import AppState
 
 -- | Build a context menu for display when right-clicking the password list.
@@ -43,7 +42,7 @@ updatePasswords :: PS.PasswordStore PS.Unlocked
 updatePasswords ps model = do
   pwds <- PS.list ps
   listStoreClear model
-  forM_ (sort pwds) (listStoreAppend model)
+  forM_ pwds (listStoreAppend model)
 
 -- | Perform an action on the currently selected item, if any. If no item is
 --   selected, display a warning about that instead.
@@ -94,7 +93,7 @@ deletePassword ps model view window = do
 passwordManager :: Window -> PS.PasswordStore PS.Unlocked -> IO (VBox, IO ())
 passwordManager window ps = do
     pwds <- PS.list ps 
-    lst <- listStoreNew (sort pwds)
+    lst <- listStoreNew pwds
     r <- cellRendererTextNew
     
     services <- treeViewColumnNew

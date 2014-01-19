@@ -15,27 +15,13 @@ import qualified Data.ByteString.Lazy as BSL
 import Control.Concurrent.MVar
 import qualified Data.Aeson as Aeson
 import System.IO
+import qualified Himitsu.SortedList as Sorted
 
 newtype PasswordStore a = PS (MVar Store)
 
 data Store where
   Locked   :: !FilePath -> Store
   Unlocked :: !FilePath -> !Password -> !(PasswordFile Unlocked) -> Store
-
-deleteAt :: Int -> [a] -> [a]
-deleteAt 0 (_:xs) = xs
-deleteAt n (x:xs) = x : deleteAt (n-1) xs
-deleteAt _ _      = []
-
-updateAt :: Int -> (a -> a) -> [a] -> [a]
-updateAt 0 f (x:xs) = f x : xs
-updateAt n f (x:xs) = x : updateAt (n-1) f xs
-updateAt _ _ _      = []
-
-getAt :: Int -> [a] -> Maybe a
-getAt 0 (x:_)  = Just x
-getAt n (_:xs) = getAt (n-1) xs
-getAt _ _      = Nothing
 
 -- | Unlock the password store.
 unlock :: PasswordStore Locked -> Password -> IO (Maybe (PasswordStore Unlocked))
@@ -85,9 +71,9 @@ update ps@(PS r) ix newcred = do
     return success
   where
     update' (Unlocked f k db) = do
-      case getAt ix . fromUnlocked $ pfSecret db of
+      case Sorted.getAt ix . fromUnlocked $ pfSecret db of
         Just _ -> do
-          let upd = updateAt ix $ \(name, _) -> (name, newcred)
+          let upd = Sorted.updateAt ix $ \(name, _) -> (name, newcred)
           return (Unlocked f k $ fmap upd db, True)
         _ ->
           return (Unlocked f k db, False)
@@ -102,9 +88,9 @@ rename ps@(PS r) ix newname = do
     return success
   where
     rename' (Unlocked f k db) = do
-      case getAt ix . fromUnlocked $ pfSecret db of
+      case Sorted.getAt ix . fromUnlocked $ pfSecret db of
         Just _ -> do
-          let upd = updateAt ix $ \(_, cred) -> (newname, cred)
+          let upd = Sorted.updateAt ix (\(_, cred) -> (newname, cred))
           return (Unlocked f k $ fmap upd db, True)
         _ ->
           return (Unlocked f k db, False)
@@ -115,12 +101,12 @@ rename ps@(PS r) ix newname = do
 get :: PasswordStore Unlocked -> Int -> IO (Maybe Credentials)
 get (PS r) ix = do
   (Unlocked _ _ db) <- readMVar r
-  return . fmap snd $ getAt ix (fromUnlocked (pfSecret db))
+  return . fmap snd $ Sorted.getAt ix (fromUnlocked (pfSecret db))
 
 -- | Create a new, unlocked password store.
 new :: Password -> FilePath -> IO (PasswordStore Unlocked)
 new pwd fp = do
-  pf <- newPF []
+  pf <- newPF Sorted.empty
   ps <- PS `fmap` newMVar (Unlocked fp pwd pf)
   save ps
   return ps
@@ -138,21 +124,21 @@ changePass ps@(PS r) pwd = do
 add :: PasswordStore Unlocked -> ServiceName -> Credentials -> IO ()
 add ps@(PS r) name cred = do
   modifyMVar r $ \(Unlocked file key db) ->
-    return (Unlocked file key $ fmap ((name, cred) :) db, ())
+    return (Unlocked file key $ fmap (Sorted.insert (name, cred)) db, ())
   save ps
 
 -- | Remove a password.
 delete :: PasswordStore Unlocked -> Int -> IO ()
 delete ps@(PS r) ix = do
   modifyMVar_ r $ \(Unlocked file key db) ->
-    return (Unlocked file key $ fmap (deleteAt ix) db)
+    return (Unlocked file key $ fmap (Sorted.deleteAt ix) db)
   save ps
 
--- | Return an unsorted list of all credentials currently in the store.
+-- | Return a sorted list of all credentials currently in the store.
 list :: PasswordStore Unlocked -> IO [(ServiceName, Credentials)]
 list (PS r) = do
   (Unlocked _ _ db) <- readMVar r
-  return . fromUnlocked $ pfSecret db
+  return . Sorted.toList . fromUnlocked $ pfSecret db
 
 -- | Create a new locked password store from a file. This operation only checks
 --   that the file exists; it may succeed even if the password store is not

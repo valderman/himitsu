@@ -3,6 +3,7 @@ import Graphics.UI.Gtk
 import Crypto.Threefish.Random
 import Data.IORef
 import System.IO.Unsafe
+import Graphics.Rendering.Pango.Font
 import Himitsu.PasswordUtils
 import PasswordDialogs (passwordBox)
 
@@ -110,6 +111,9 @@ generatorBox dlg = do
 
   -- Text box containing password.
   passent <- passwordBox dlg
+  fd <- fontDescriptionNew
+  fontDescriptionSetFamily fd "monospace"
+  widgetModifyFont passent (Just fd)
   entrySetWidthChars passent 30
   entrySetVisibility passent False
   containerAdd passbox passent

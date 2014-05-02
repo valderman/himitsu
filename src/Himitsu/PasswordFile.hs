@@ -133,7 +133,8 @@ type Accounts = SortedList (ServiceName, Credentials)
 type PasswordFile a = ProtectedFile a Accounts
 
 instance ToJSON Salt where
-  toJSON (Salt s) = toJSON . B64.encode $ BSL.fromStrict s
+  toJSON (Salt s) =
+    toJSON . decodeUtf8 . BSL.toStrict . B64.encode $ BSL.fromStrict s
 
 instance FromJSON Salt where
   parseJSON (String s) = do
